@@ -65,4 +65,4 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 
 // Stripe webhook endpoint (public)
-Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
+Route::post('/stripe/webhook', [PaymentController::class, 'webhook']);
