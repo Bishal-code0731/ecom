@@ -81,10 +81,24 @@ export default {
     ...mapActions(['fetchOrders']),
     formatDate(dateString) {
       return new Date(dateString).toLocaleDateString()
+    },
+    startAutoRefresh() {
+      // Clear any existing interval
+      if (this.refreshInterval) clearInterval(this.refreshInterval)
+
+      // Refresh orders every 5 seconds
+      this.refreshInterval = setInterval(async () => {
+        await this.fetchOrders()
+      }, 5000)
     }
   },
   async created() {
     await this.fetchOrders()
+    this.startAutoRefresh()
+  },
+  beforeUnmount() {
+    // Clean up interval when component is destroyed
+    if (this.refreshInterval) clearInterval(this.refreshInterval)
   }
 }
 </script>
