@@ -48,7 +48,7 @@ class ProductRepository implements ProductRepositoryInterface
         return Product::where($column, $operator, $value)->get();
     }
 
-    public function paginate(int $perPage = 15): LengthAwarePaginator
+    public function paginate(int $perPage = 40): LengthAwarePaginator
     {
         return Product::paginate($perPage);
     }

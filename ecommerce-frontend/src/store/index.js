@@ -15,18 +15,18 @@ export default createStore({
 
   mutations: {
     SET_AUTH(state, { user, token }) {
-      console.log('SET_AUTH mutation called', { user, token })
       state.auth.isAuthenticated = true
       state.auth.user = user
       state.auth.token = token
       localStorage.setItem('token', token)
+      localStorage.setItem('user', JSON.stringify(user))
     },
     CLEAR_AUTH(state) {
-      console.log('CLEAR_AUTH mutation called')
       state.auth.isAuthenticated = false
       state.auth.user = null
       state.auth.token = null
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
     },
     SET_PRODUCTS(state, products) {
       state.products = Array.isArray(products) ? products : []
@@ -41,15 +41,12 @@ export default createStore({
     DELETE_PRODUCT(state, productId) {
       state.products = state.products.filter(p => p.id !== productId)
     },
-
-    // Always arrays, filter out nulls
     SET_ORDERS(state, orders) {
       state.orders = Array.isArray(orders) ? orders.filter(o => o) : []
     },
     SET_ALL_ORDERS(state, orders) {
       state.allOrders = Array.isArray(orders) ? orders.filter(o => o) : []
     },
-
     UPDATE_ORDER_STATUS(state, { orderId, status }) {
       const order = state.allOrders.find(o => o.id === orderId)
       if (order) order.status = status
@@ -62,18 +59,12 @@ export default createStore({
   actions: {
     async login({ commit }, credentials) {
       try {
-        console.log('Login action called with credentials:', credentials)
         const response = await api.post('/login', credentials)
         const { user, token } = response.data.data
         commit('SET_AUTH', { user, token })
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         return { success: true }
       } catch (error) {
-        console.error('Login error details:', {
-          message: error.message,
-          response: error.response?.data,
-          status: error.response?.status
-        })
         return { 
           success: false, 
           message: error.response?.data?.message || 'Login failed. Please check your credentials.' 
@@ -83,14 +74,12 @@ export default createStore({
 
     async register({ commit }, userData) {
       try {
-        console.log('Register action called with:', userData)
         const response = await api.post('/register', userData)
         const { user, token } = response.data.data
         commit('SET_AUTH', { user, token })
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
         return { success: true }
       } catch (error) {
-        console.error('Registration error:', error.response?.data || error.message)
         return { 
           success: false, 
           message: error.response?.data?.message || 'Registration failed' 
@@ -105,11 +94,12 @@ export default createStore({
 
     initializeAuth({ commit, state }) {
       const token = localStorage.getItem('token')
-      if (token) {
+      const user = JSON.parse(localStorage.getItem('user') || null)
+       if (token && user) {
         state.auth.isAuthenticated = true
+        state.auth.user = user
         state.auth.token = token
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`
-        console.log('Auth initialized from localStorage')
       }
     },
 
@@ -119,23 +109,56 @@ export default createStore({
         const products = response.data.data || response.data
         commit('SET_PRODUCTS', products)
       } catch (error) {
-        console.error('Error fetching products:', error)
         commit('SET_PRODUCTS', [])
       }
     },
 
-    // User-specific orders
+    // User-specific orders - FIXED VERSION
     async fetchOrders({ commit, state }) {
       if (!state.auth.isAuthenticated || !state.auth.user) {
         commit('SET_ORDERS', [])
         return
       }
+
       try {
         const response = await api.get('/orders')
-        const orders = response.data.data || response.data
+        console.log('Orders API response:', response.data)
+        
+        // Handle different API response structures
+        let orders = response.data;
+        
+        // Handle Laravel pagination vs plain array
+        if (response.data && response.data.data && Array.isArray(response.data.data)) {
+          // This is a paginated response: { data: [...], meta: {...} }
+          orders = response.data.data;
+        } else if (response.data && response.data.data && response.data.data.data) {
+          // This is a nested paginated response (less common)
+          orders = response.data.data.data;
+        } else if (response.data && Array.isArray(response.data)) {
+          // This is a plain array response
+          orders = response.data;
+        } else {
+          // Fallback to empty array
+          orders = [];
+        }
+
         const userOrders = Array.isArray(orders)
-          ? orders.filter(order => order && order.user_id === state.auth.user.id)
+          ? orders
+              .filter(order => order && (
+                order.user_id === state.auth.user.id || 
+                order.userId === state.auth.user.id
+              ))
+              .map(order => ({
+                ...order,
+                shipping: order.shipping_address || {},
+                items: (order.items || []).map(item => ({
+                  ...item,
+                  product: item.product || { name: 'Unknown Product' }
+                })),
+                total_amount: order.total || order.total_amount
+              }))
           : []
+
         commit('SET_ORDERS', userOrders)
       } catch (error) {
         console.error('Error fetching orders:', error)
@@ -146,7 +169,7 @@ export default createStore({
     async createProduct({ commit }, productData) {
       try {
         const response = await api.post('/products', productData)
-        commit('ADD_PRODUCT', response.data)
+        commit('ADD_PRODUCT', response.data.data)
         return { success: true }
       } catch (error) {
         return { success: false, message: error.response?.data?.message || 'Failed to create product' }
@@ -156,7 +179,7 @@ export default createStore({
     async updateProduct({ commit }, { id, ...productData }) {
       try {
         const response = await api.put(`/products/${id}`, productData)
-        commit('UPDATE_PRODUCT', response.data)
+        commit('UPDATE_PRODUCT', response.data.data)
         return { success: true }
       } catch (error) {
         return { success: false, message: error.response?.data?.message || 'Failed to update product' }
@@ -173,7 +196,7 @@ export default createStore({
       }
     },
 
-    // 🔹 Admin: all orders
+    // Admin: all orders
     async fetchAllOrders({ commit }) {
       try {
         const response = await api.get('/admin/orders')
@@ -181,7 +204,6 @@ export default createStore({
         commit('SET_ALL_ORDERS', orders)
         return orders
       } catch (error) {
-        console.error('Error fetching all orders:', error)
         commit('SET_ALL_ORDERS', [])
         throw error
       }
@@ -193,7 +215,6 @@ export default createStore({
         commit('UPDATE_ORDER_STATUS', { orderId, status })
         return { success: true, data: response.data }
       } catch (error) {
-        console.error('Error updating order status:', error)
         return { success: false, message: error.response?.data?.message || 'Failed to update order status' }
       }
     }

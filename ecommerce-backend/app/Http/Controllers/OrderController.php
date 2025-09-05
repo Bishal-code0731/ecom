@@ -28,6 +28,9 @@ class OrderController extends Controller
 
         $orders = $this->orderService->getOrders($filters, $perPage);
 
+        // Ensure related data is loaded for the frontend
+        $orders->load(['items.product']);
+
         return response()->json([
             'success' => true,
             'data' => $orders

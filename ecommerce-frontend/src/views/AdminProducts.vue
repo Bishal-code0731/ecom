@@ -36,7 +36,6 @@
 <script>
 import { mapState, mapActions } from 'vuex'
 import ProductForm from '../components/ProductForm.vue'
-import api from '../services/api'
 
 export default {
   name: 'AdminProducts',
@@ -56,7 +55,7 @@ export default {
     this.fetchProducts()
   },
   methods: {
-    ...mapActions(['fetchProducts']),
+    ...mapActions(['fetchProducts', 'deleteProduct']),
     showAddForm() {
       this.editingProduct = null
       this.showForm = true
@@ -72,8 +71,13 @@ export default {
     async deleteProduct(id) {
       if (confirm('Are you sure you want to delete this product?')) {
         try {
-          await api.deleteProduct(id)
-          this.fetchProducts() // Refresh the list
+          // Use the Vuex action instead of direct API call
+          const result = await this.$store.dispatch('deleteProduct', id)
+          if (result.success) {
+            this.fetchProducts() // Refresh the list
+          } else {
+            alert(result.message || 'Error deleting product')
+          }
         } catch (error) {
           console.error('Error deleting product:', error)
           alert('Error deleting product. Please try again.')
@@ -95,6 +99,20 @@ export default {
 
 .add-product-btn {
   margin-bottom: 20px;
+  padding: 10px 20px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.add-product-btn:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
 .products-list {
@@ -111,6 +129,12 @@ export default {
   background: white;
   border-radius: 8px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease;
+}
+
+.product-item:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
 .product-info {
@@ -128,17 +152,26 @@ export default {
 
 .product-info h3 {
   margin-bottom: 5px;
+  color: #2c3e50;
 }
 
 .product-info p {
-  color: #666;
+  color: #7f8c8d;
   margin-bottom: 5px;
   font-size: 14px;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+   line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .price {
   font-weight: bold;
-  color: #3b71fe !important;
+  color: #27ae60 !important;
+  font-size: 18px;
 }
 
 .product-actions {
@@ -152,23 +185,24 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   font-weight: 500;
+  transition: all 0.2s ease;
 }
 
 .btn-edit {
-  background-color: #ffc107;
-  color: #000;
+  background-color: #f39c12;
+  color: white;
 }
 
 .btn-edit:hover {
-  background-color: #e0a800;
+  background-color: #e67e22;
 }
 
 .btn-delete {
-  background-color: #dc3545;
+  background-color: #e74c3c;
   color: white;
 }
 
 .btn-delete:hover {
-  background-color: #c82333;
+  background-color: #c0392b;
 }
 </style>

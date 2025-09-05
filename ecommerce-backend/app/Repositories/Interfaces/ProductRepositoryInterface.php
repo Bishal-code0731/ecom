@@ -20,7 +20,7 @@ interface ProductRepositoryInterface
 
     public function where(string $column, $value, string $operator = '='): Collection;
 
-    public function paginate(int $perPage = 15): LengthAwarePaginator;
+    public function paginate(int $perPage = 40): LengthAwarePaginator;
 
     // Optional - if implemented in repository
     public function active(): Collection;

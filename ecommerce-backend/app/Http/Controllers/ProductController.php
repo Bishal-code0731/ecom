@@ -34,7 +34,7 @@ class ProductController extends Controller
         }
 
         // Pagination (manually paginate collection)
-        $perPage = (int) $request->get('per_page', 15);
+        $perPage = (int) $request->get('per_page', 40);
         $page = (int) $request->get('page', 1);
         $total = $query->count();
         $results = $query->slice(($page - 1) * $perPage, $perPage)->values();

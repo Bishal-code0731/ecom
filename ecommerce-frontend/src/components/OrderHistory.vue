@@ -1,10 +1,13 @@
-<!-- components/OrderHistory.vue -->
 <template>
   <div class="order-history">
     <h2>Order History</h2>
     
     <div v-if="loading" class="loading">
       <p>Loading your orders...</p>
+    </div>
+    
+    <div v-else-if="error" class="error-alert">
+      <p>{{ error }}</p>
     </div>
     
     <div v-else-if="orders.length === 0" class="empty-state">
@@ -96,7 +99,7 @@ export default {
     async cancelOrder(orderId) {
       if (confirm('Are you sure you want to cancel this order?')) {
         try {
-          await api.updateOrder(orderId, { status: 'cancelled' })
+          await api.put(`/orders/${orderId}`, { status: 'cancelled' })
           alert('Order cancelled successfully!')
           await this.loadOrders() // Refresh the orders list
         } catch (error) {
@@ -127,6 +130,15 @@ h2 {
   text-align: center;
   padding: 40px;
   color: #666;
+}
+
+.error-alert {
+  text-align: center;
+  padding: 20px;
+  background-color: #f8d7da;
+  color: #721c24;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 .empty-state {
